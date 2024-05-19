@@ -52,6 +52,7 @@ def color_grayscale_arr(arr, red=True):
 class ColoredMNIST(datasets.VisionDataset):
   """
   Colored MNIST dataset for testing IRM. Prepared using procedure from https://arxiv.org/pdf/1907.02893.pdf
+  It takes MNIST train and test data, joins it and splits in 3 equal parts of 23333 images
 
   Args:
     root (string): Root directory of dataset where ``ColoredMNIST/*.pt`` will exist.

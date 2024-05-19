@@ -6,6 +6,8 @@ Created on Tue Feb 13 17:59:26 2024
 """
 import torch.nn as nn
 import torch
+import torch.optim as optim
+
 device= torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ###########################################################################
 #FUNCTIONS
@@ -45,6 +47,33 @@ def fwdPass(model,criterion,img,lbl,totloss,op='ERM'):
         totloss += loss.mean().item() * img.size(0)
     return totloss, loss, outputs
 
+def initModel(lr,model,tmax):
+    model.to(device)
+    optimizer = optim.AdamW(model.parameters(), lr=lr)
+    # Define the learning rate scheduler
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=tmax,eta_min=0.00001,verbose=True)
+    return model,optimizer,scheduler
+
+def wblog(wandb,ce,ce2,cet,acc,acc2,acct,sfb,pCI,pStability):
+    wandb.log({"Train ce1": ce,
+           "Train ce2": ce2,
+           "Test ce": cet,
+           "Train acc1": acc.mean(),
+           "Train acc2": acc2.mean(),
+           "Test acc": acct.mean(),
+           "SFB loss": sfb,
+           "pCI": pCI,
+           "pS":pStability})
+
+def wbinit(wandb,cf,name):
+    wandb.init(
+        # set the wandb project where this run will be logged
+        name=name,
+        project="StableFeatureBoosting",
+    
+        # track hyperparameters and run metadata
+        config=cf
+    )
 ###############################################################################
 #ACTIS
 ###############################################################################

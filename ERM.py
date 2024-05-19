@@ -6,12 +6,14 @@ Created on Tue Feb 13 17:45:17 2024
 """
 
 from tqdm import tqdm
-from utils import mean_accuracy,prepDat,fwdPass
+from utils import mean_accuracy,prepDat,fwdPass,wblog
 import torch
 
-def runERM(model,criterion,optimizer,scheduler,train_loader_1,train_loader_2,test_loader,num_epochs,printFreq,pth,save=False):
+def runERM(model,criterion,optimizer,scheduler,train_loader_1,train_loader_2,test_loader,
+           num_epochs,printFreq,pth,wb,wandb,save=False):
     print('\nERM')
     # Train the model
+    bestAcc=0
     
     for epoch in tqdm(range(num_epochs), desc='Epochs'):
         
@@ -21,7 +23,7 @@ def runERM(model,criterion,optimizer,scheduler,train_loader_1,train_loader_2,tes
         train_loss = 0.0
         for data in train_loader_1:
             img,lbl = prepDat(data)
-            train_loss,loss,outputs = fwdPass(model, criterion, img, lbl, train_loss)
+            train_loss,ce,outputs = fwdPass(model, criterion, img, lbl, train_loss)
             acc1 = mean_accuracy(outputs, lbl)
             
         #TRAIN SET 2
@@ -29,34 +31,46 @@ def runERM(model,criterion,optimizer,scheduler,train_loader_1,train_loader_2,tes
         for data in train_loader_2:
             img,lbl = prepDat(data)
             
-            train_loss2,loss2,outputs = fwdPass(model, criterion, img, lbl, train_loss2)
+            train_loss2,ce2,outputs = fwdPass(model, criterion, img, lbl, train_loss2)
             acc2 = mean_accuracy(outputs, lbl)
             
         # Backward pass and optimization
-        loss=(loss+loss2)/2 #join both losses
+        loss=(ce+ce2)/2 #join both losses
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        scheduler.step()
+        #scheduler.step()
     
         model.eval()
-        
         test_loss = 0.0
         with torch.no_grad():
             for data in test_loader:
                 img,lbl=prepDat(data)
                 # Forward pass
-                test_loss,_,outputs = fwdPass(model, criterion, img, lbl, test_loss)
+                test_loss,cet,outputs = fwdPass(model, criterion, img, lbl, test_loss)
                 acct = mean_accuracy(outputs, lbl)
     
         # Print train and test progress
+        acc1,acc2,acct = acc1.mean(),acc2.mean(),acct.mean()
         if epoch % printFreq ==0 or epoch == num_epochs-1:
             train_loss /= len(train_loader_1.dataset)  # Divide by total number of samples
             train_loss2 /= len(train_loader_2.dataset)  # Divide by total number of samples
             test_loss /= len(test_loader.dataset)  # Divide by total number of samples
             print(f'\nTrain Loss: {train_loss:.4f} {train_loss2:.4f}, Test Loss: {test_loss:.4f},',
-                  f'Train acc: {acc1.mean():.4f} {acc2.mean():.4f}, Test acc: {acct.mean():.4f}')
+                  f'Train acc: {acc1:.4f} {acc2:.4f}, Test acc: {acct:.4f}')
+    
+            if wb:
+                wblog(wandb, ce, ce2, cet, acc1, acc2, acct, 0, 0, 0)
     
         if save:
             # Save the trained model
             torch.save(model.state_dict(), pth+'ERM.pth')
+            
+        if (acc1*acc2*acct)**(1/3) > bestAcc:
+            bestAcc = (acc1*acc2*acct)**(1/3)
+            print(acc1.cpu().item(), acc2.cpu().item(), acct.cpu().item(), epoch)
+    
+    #Print best accuracies
+    acc1,acc2,acct = acc1.cpu().item(),acc2.cpu().item(),acct.cpu().item()
+    print('\n',acc1, acc2, acct, epoch)
+    return [acc1,acc2,acct]
