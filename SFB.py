@@ -55,6 +55,8 @@ def runSFB(clas,criterion,optimizer,scheduler,train_loader_1,train_loader_2,test
     
     print('\nSFB')
     bestAcc=0
+    bestGeo=0
+    accs=[[],[]]
     bestModel=None
     
     for epoch in tqdm(range(num_epochs), desc='Epochs'):
@@ -161,15 +163,19 @@ def runSFB(clas,criterion,optimizer,scheduler,train_loader_1,train_loader_2,test
             if wb:
                 wblog(wandb, ce, ce2, cet, acc, acc2, acct, sfb, pCI, pStability)
         
-        #store best accuracy and model
-        if (acc*acc2*acct)**(1/3) > bestAcc:
-            bestAcc = (acc*acc2*acct)**(1/3)
-            print(acc, acc2, acct.cpu().item(), epoch)
-            bestModel=copy.deepcopy(clas)
+        if (acc*acc2*acct)**(1/3) > bestGeo:
+            a1,a2,at = acc,acc2,acct.cpu().item()
+            bestGeo = (a1*a2*at)**(1/3)
+            print(a1, a2, at, epoch)
+            accs[0] = [a1,a2,at]
+        
+        if acct > bestAcc:
+            acc1,acc2,acct = acc,acc2,acct.cpu().item()
+            bestAcc = acct
+            print(acc1, acc2, acct, epoch)
+            accs[1] = [acc1,acc2,acct]
     
-    #Print best accuracies
-    print('\n',acc, acc2, acct.cpu().item())
-    return bestModel,[acc,acc2,acct.cpu().item()]
+    return accs
 
 # #PARAMS
 # num_epochs = 1000

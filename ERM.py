@@ -14,6 +14,8 @@ def runERM(model,criterion,optimizer,scheduler,train_loader_1,train_loader_2,tes
     print('\nERM')
     # Train the model
     bestAcc=0
+    bestGeo=0
+    accs=[[],[]]
     
     for epoch in tqdm(range(num_epochs), desc='Epochs'):
         
@@ -66,11 +68,16 @@ def runERM(model,criterion,optimizer,scheduler,train_loader_1,train_loader_2,tes
             # Save the trained model
             torch.save(model.state_dict(), pth+'ERM.pth')
             
-        if (acc1*acc2*acct)**(1/3) > bestAcc:
-            bestAcc = (acc1*acc2*acct)**(1/3)
-            print(acc1.cpu().item(), acc2.cpu().item(), acct.cpu().item(), epoch)
+        if (acc1*acc2*acct)**(1/3) > bestGeo:
+            a1,a2,at = acc1.cpu().item(),acc2.cpu().item(),acct.cpu().item()
+            bestGeo = (a1*a2*at)**(1/3)
+            print(a1, a2, at, epoch)
+            accs[0] = [a1,a2,at]
+        
+        if acct > bestAcc:
+            acc1,acc2,acct = acc1.cpu().item(),acc2.cpu().item(),acct.cpu().item()
+            bestAcc = acct
+            print(acc1, acc2, acct, epoch)
+            accs[1] = [acc1,acc2,acct]
     
-    #Print best accuracies
-    acc1,acc2,acct = acc1.cpu().item(),acc2.cpu().item(),acct.cpu().item()
-    print('\n',acc1, acc2, acct, epoch)
-    return [acc1,acc2,acct]
+    return accs
