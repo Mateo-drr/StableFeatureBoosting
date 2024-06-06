@@ -7,6 +7,7 @@ Created on Tue Feb 13 17:59:26 2024
 import torch.nn as nn
 import torch
 import torch.optim as optim
+import numpy as np
 
 device= torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ###########################################################################
@@ -121,3 +122,58 @@ def DiscreteConditionalExpecationTest(x, y, z):
       estimate += torch.sum(x[curr_class_indices, :] * (yy), dim=0) 
     
     return estimate/n #E[]
+
+###############################################################################
+#SFB
+###############################################################################
+def calcEp0(Y_hat):
+    '''
+    Parameters
+    ----------
+    Y_hat : numpy array
+        pseudo-labels.
+
+    Returns
+    -------
+    ep0 : float
+        pseudo-label =0 acc
+    '''
+    n = len(Y_hat)
+    n1 = np.sum(Y_hat)
+    ep0 = np.sum((1-Y_hat)**2) / (n - n1)
+    
+    return ep0
+
+def calcEp1(Y_hat):
+    '''
+    Parameters
+    ----------
+    Y_hat : numpy array
+        pseudo-labels.
+
+    Returns
+    -------
+    ep1 : float
+        pseudo-label =1 acc
+    '''
+    n1 = np.sum(Y_hat)
+    ep1 = np.sum((Y_hat)**2) / (n1)
+    
+    return ep1
+
+def calcPu(pu,ep0,ep1):
+    '''
+    Parameters
+    ----------
+    pu : numpy arr
+        unstable predictions.
+    ep0 : float
+    ep1 : float
+
+    Returns
+    -------
+    pu^
+        fine-tunned unstable pred.
+    '''
+    return np.clip((pu+ep0-1)/(ep0+ep1-1),0,1)
+    
